@@ -37,6 +37,9 @@ io.on('connection', function (socket) {
     };
     console.log('['+payload.uuid+'] received a download request for '+data.url);
     pending_tasks[payload.uuid] = {socket: socket, payload: payload};
+    setTimeout(function() {
+      delete pending_tasks[payload.uuid];
+    }, 5 * 3600 * 1000); // 5 hours
     pusher.send(JSON.stringify(payload));
   });
 });
@@ -44,10 +47,12 @@ io.on('connection', function (socket) {
 puller.on('message', function(msg) {
   msg = JSON.parse(msg.toString());
   console.log('['+msg.uuid+'] received a '+msg.status+' response');
-  socket = pending_tasks[msg.uuid].socket;
-  if (msg.status == "success" || msg.status == "fail") {
-    delete pending_tasks[msg.uuid];
+
+  if (msg.data && msg.data._filename) {
+    msg.data.download_link = "http://archiviste.deuxfleurs.fr/static/downloads/" + msg.data._filename;
   }
+
+  socket = pending_tasks[msg.uuid].socket;
   socket.emit('tracking', msg);
 });
 

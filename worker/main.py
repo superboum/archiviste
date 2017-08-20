@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import zmq, sys, io, youtube_dl, functools, json, contextlib
+import zmq, sys, io, youtube_dl, functools, json, contextlib, re
 
 def main():
   print("worker-dl")
@@ -25,24 +25,35 @@ def start(address, port_pull, port_push):
 
 def listen(puller, pusher):
   while True:
-    msg = puller.recv_json()
-    pusher.send_json({'uuid': msg['uuid'], 'status': 'accepted'})
+    try:
+      msg = puller.recv_json()
+    except Exception as err:
+      print("Unable to decode received in the puller", err)
 
-    data = None
+    try:
+      pusher.send_json({'uuid': msg['uuid'], 'status': 'accepted'})
+      data = None
 
-    opts = msg['opts']
-    opts['forcejson'] = True
-    opts['quiet'] = True
-    opts['progress_hooks'] = [functools.partial(hook, push=pusher, returned_data=data, payload=msg)]
+      opts = msg['opts']
+      opts['forcejson'] = True
+      opts['quiet'] = True
+      opts['progress_hooks'] = [functools.partial(hook, push=pusher, returned_data=data, payload=msg)]
 
-    f = io.StringIO()
-    with contextlib.redirect_stdout(f):
-      with youtube_dl.YoutubeDL(msg['opts']) as ydl:
-        return_code = ydl.download(msg['url'])
-      data = json.loads(f.getvalue())
+      f = io.StringIO()
+      with contextlib.redirect_stdout(f):
+        with youtube_dl.YoutubeDL(msg['opts']) as ydl:
+          return_code = ydl.download(msg['url'])
 
-    status = "success" if return_code == 0 else 'fail'
-    pusher.send_json({'uuid': msg['uuid'], 'status': status, 'data': data})
+      if return_code == 0:
+        data = json.loads('['+re.sub('}\s*{', '}, {', f.getvalue())+']')
+        for d in data:
+          pusher.send_json({'uuid': msg['uuid'], 'status': 'success', 'data': d})
+      else:
+        pusher.send_json({'uuid': msg['uuid'], 'status': 'fail'})
+
+    except Exception as err:
+      print(err)
+      pusher.send_json({'uuid': msg['uuid'], 'status': 'fail'})
 
 def hook(ytl_info, push, returned_data, payload):
   if ytl_info['status'] == 'finished':

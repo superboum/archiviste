@@ -49,18 +49,18 @@ html
             em pas d'option pour le moment...
 
       .mdl-cell.mdl-cell--6-col(v-for="download in reverseDownloads")
-        .video-card.full-size.mdl-card.mdl-shadow--2dp(v-if="!download.data || !download.data._filename")
+        .video-card.full-size.mdl-card.mdl-shadow--2dp(v-if="!download.status || download.status != 'success'")
           .mdl-card__title.mdl-card--expand
             h3 Veuillez patienter...
-          .mdl-card__supporting-text {{ download.status ? download.status : '...' }}
+          .mdl-card__supporting-text {{ download.status ? download.status : '...' }} {{ download.data ? 'encore ' + download.data.eta + ' secondes' : '' }}
           .mdl-card__actions.mdl-card--border
             a.mdl-button.mdl-button--colored.mdl-js-button.mdl-js-ripple-effect Télécharger
-        .video-card.full-size.mdl-card.mdl-shadow--2dp(v-if="download.data && download.data._filename")
+        .video-card.full-size.mdl-card.mdl-shadow--2dp(v-if="download.status && download.status == 'success'")
           .mdl-card__title.mdl-card--expand(v-bind:style="{background: 'url('+download.data.thumbnail+') center / cover'}")
-            h3 {{ download.data ? download.data.title : 'erreur' }}
-          .mdl-card__supporting-text {{ download.data ? download.data.description : 'erreur'}}
+            h3 {{ download.data.title }}
+          .mdl-card__supporting-text {{ download.data.description }}
           .mdl-card__actions.mdl-card--border
-            a.mdl-button.mdl-button--colored.mdl-js-button.mdl-js-ripple-effect(v-bind:href="download.data._filename") Télécharger
+            a.mdl-button.mdl-button--colored.mdl-js-button.mdl-js-ripple-effect(v-bind:href="download.data.download_link") Télécharger
 
     script(defer=1 src="https://code.getmdl.io/1.3.0/material.min.js")
     script(src="/socket.io/socket.io.js")
@@ -93,11 +93,14 @@ html
         //-vm.ready = true;
         let found = false;
         vm.downloads.forEach(function(item, index) {
-          if (item.uuid == data.uuid) {
+          if (
+            (item.status != "success" && item.uuid == data.uuid) ||
+            (item.status == "success" && item.uuid == data.uuid && item.data.download_link == data.data.download_link)
+          ) {
             vm.downloads.splice(index, 1, data);
             found = true;
           }
-        }.bind(this));
+        });
         if (!found) vm.downloads.push(data);
       });
 
