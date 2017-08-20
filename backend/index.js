@@ -1,22 +1,56 @@
 let zmq = require('zeromq');
 let uuid = require('uuid');
+let express = require('express');
+
+// SETUP
+
+let app = express();
+let server = require('http').Server(app);
+var io = require('socket.io')(server);
 
 let pusher = zmq.socket('push');
 let puller = zmq.socket('pull');
 
-pusher.bindSync('tcp://127.0.0.1:3000');
-console.log('Pusher started on port 3000');
+let pending_tasks = {};
 
-puller.bindSync('tcp://127.0.0.1:3001');
-console.log('Puller started on port 3001');
+function launch() {
+  pusher.bindSync('tcp://127.0.0.1:3000');
+  puller.bindSync('tcp://127.0.0.1:3001');
+  app.use(express.static('static'));
+  app.set('view engine', 'pug');
+  server.listen(3002);
 
-puller.on('message', function(msg){
-  console.log(JSON.parse(msg.toString()));
+  console.log('Application is listening (3000 pusher, 3001 puller, 3002 http)');
+}
+
+// ROUTES
+app.get('/', function (req, res) {
+  res.render('index');
 });
 
-let payload = {
-  uuid: uuid.v4(),
-  url: ['https://www.youtube.com/watch?v=lZWxMtXY1EE'],
-  opts: {}
-}
-pusher.send(JSON.stringify(payload));
+io.on('connection', function (socket) {
+  socket.on('download', function (data) {
+    let payload = {
+      uuid: uuid.v4(),
+      url: data.url,
+      opts: {}
+    };
+    console.log('['+payload.uuid+'] received a download request for '+data.url);
+    pending_tasks[payload.uuid] = {socket: socket, payload: payload};
+    pusher.send(JSON.stringify(payload));
+  });
+});
+
+puller.on('message', function(msg) {
+  msg = JSON.parse(msg.toString());
+  console.log('['+msg.uuid+'] received a '+msg.status+' response');
+  socket = pending_tasks[msg.uuid].socket;
+  if (msg.status == "success" || msg.status == "fail") {
+    delete pending_tasks[msg.uuid];
+  }
+  socket.emit('tracking', msg);
+});
+
+// MAIN
+launch();
+

@@ -33,7 +33,7 @@ def listen(puller, pusher):
     opts = msg['opts']
     opts['forcejson'] = True
     opts['quiet'] = True
-    opts['progress_hooks'] = [functools.partial(hook, push=pusher, returned_data=data)]
+    opts['progress_hooks'] = [functools.partial(hook, push=pusher, returned_data=data, payload=msg)]
 
     f = io.StringIO()
     with contextlib.redirect_stdout(f):
@@ -44,15 +44,15 @@ def listen(puller, pusher):
     status = "success" if return_code == 0 else 'fail'
     pusher.send_json({'uuid': msg['uuid'], 'status': status, 'data': data})
 
-def hook(ytl_info, push, returned_data):
+def hook(ytl_info, push, returned_data, payload):
   if ytl_info['status'] == 'finished':
-    pusher.send_json({
-      'uuid': msg['uuid'],
+    push.send_json({
+      'uuid': payload['uuid'],
       'status': 'encoding'
     })
   elif ytl_info['status'] == 'downloading':
-    pusher.send_json({
-      'uuid': msg['uuid'],
+    push.send_json({
+      'uuid': payload['uuid'],
       'status': 'downloading',
       'data': {
         'elapsed': ytl_info['elapsed'],

@@ -9,6 +9,9 @@
   "author": "Quentin Dufour",
   "license": "GPL-2.0",
   "dependencies": {
+    "express": "^4.15.4",
+    "pug": "^2.0.0-rc.3",
+    "socket.io": "^2.0.3",
     "uuid": "^3.1.0",
     "zeromq": "^4.5.0"
   }
