@@ -49,7 +49,7 @@ puller.on('message', function(msg) {
   console.log('['+msg.uuid+'] received a '+msg.status+' response');
 
   if (msg.data && msg.data._filename) {
-    msg.data.download_link = "http://archiviste.deuxfleurs.fr/static/downloads/" + msg.data._filename;
+    msg.data.download_link = "http://archiviste.deuxfleurs.fr/downloads/" + msg.data._filename;
   }
 
   socket = pending_tasks[msg.uuid].socket;
