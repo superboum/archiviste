@@ -60,7 +60,7 @@ html
             h3 {{ download.data.title }}
           .mdl-card__supporting-text {{ download.data.description }}
           .mdl-card__actions.mdl-card--border
-            a.mdl-button.mdl-button--colored.mdl-js-button.mdl-js-ripple-effect(download=1 v-bind:href="download.data.download_link") Télécharger
+            a.mdl-button.mdl-button--colored.mdl-js-button.mdl-js-ripple-effect(v-bind:download="download.data._filename" v-bind:href="download.data.download_link") Télécharger
 
     script(defer=1 src="https://code.getmdl.io/1.3.0/material.min.js")
     script(src="/socket.io/socket.io.js")
