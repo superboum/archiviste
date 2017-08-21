@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import zmq, sys, io, os, youtube_dl, functools, json, contextlib, re, glob, Path
+import zmq, sys, io, os, youtube_dl, functools, json, contextlib, re, glob, pathlib
 
 def main():
   print("worker-dl")
@@ -48,7 +48,7 @@ def listen(puller, pusher):
         data = json.loads('['+re.sub('}\s*{', '}, {', f.getvalue())+']')
         for d in data:
           fix_filename(d)
-          Path(d['_filename']).touch() # Fix for CRON
+          pathlib.Path(d['_filename']).touch() # Fix for CRON
           pusher.send_json({'uuid': msg['uuid'], 'status': 'success', 'data': d})
       else:
         pusher.send_json({'uuid': msg['uuid'], 'status': 'fail'})
