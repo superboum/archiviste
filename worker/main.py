@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import zmq, sys, io, youtube_dl, functools, json, contextlib, re
+import zmq, sys, io, os, youtube_dl, functools, json, contextlib, re, glob
 
 def main():
   print("worker-dl")
@@ -47,6 +47,7 @@ def listen(puller, pusher):
       if return_code == 0:
         data = json.loads('['+re.sub('}\s*{', '}, {', f.getvalue())+']')
         for d in data:
+          fix_filename(d)
           pusher.send_json({'uuid': msg['uuid'], 'status': 'success', 'data': d})
       else:
         pusher.send_json({'uuid': msg['uuid'], 'status': 'fail'})
@@ -54,6 +55,15 @@ def listen(puller, pusher):
     except Exception as err:
       print(err)
       pusher.send_json({'uuid': msg['uuid'], 'status': 'fail'})
+
+def fix_filename(d):
+  if os.path.exists(d['_filename']):
+    return
+
+  without_ext = d['_filename'].rsplit('.', 1)
+  found = glob.glob(without_ext[0]+'.*')
+  if len(found) > 0:
+    d['_filename'] = found[0]
 
 def hook(ytl_info, push, returned_data, payload):
   if ytl_info['status'] == 'finished':
